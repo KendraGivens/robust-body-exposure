@@ -112,6 +112,10 @@ class AssistiveEnv(gym.Env):
         # Disable real time simulation so that the simulation only advances when we call stepSimulation
         p.setRealTimeSimulation(0, physicsClientId=self.id)
         p.setGravity(0, 0, self.gravity, physicsClientId=self.id)
+
+        # testing determinism
+        p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
+
         self.agents = []
         self.last_sim_time = None
         self.iteration = 0
@@ -383,7 +387,7 @@ class AssistiveEnv(gym.Env):
         img = np.reshape(img, (h, w, 4))
         depth = np.reshape(depth, (h, w))
         return img, depth
-    
+
     def getRayFromTo(self, mouseX, mouseY):
         width, height, viewMat, projMat, cameraUp, camForward, horizon, vertical, _, _, dist, camTarget = p.getDebugVisualizerCamera(
         )
@@ -395,7 +399,7 @@ class AssistiveEnv(gym.Env):
         # print(vertical)
         # print(dist)
         # print(camTarget)
-        
+
         camPos = [
             camTarget[0] - dist * camForward[0], camTarget[1] - dist * camForward[1],
             camTarget[2] - dist * camForward[2]
@@ -428,7 +432,7 @@ class AssistiveEnv(gym.Env):
         lenOrtho = math.sqrt(ortho[0] * ortho[0] + ortho[1] * ortho[1] + ortho[2] * ortho[2])
         alpha = math.atan(lenOrtho / farPlane)
         return rayFrom, rayTo, alpha
-    
+
     def get_point_cloud(self):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
 
@@ -545,7 +549,7 @@ class AssistiveEnv(gym.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         # print("ready\n")
         print(len(point_cloud), len(point_cloud_filtered))
-        
+
         # import pickle
         # f = open('point_cloud_data.pkl', 'wb')
 
@@ -571,7 +575,7 @@ class AssistiveEnv(gym.Env):
         # pickle.dump(point_cloud_info, f)
 
         return point_cloud
-    
+
     def get_depth_image_for_point_cloud(self, image_width, image_height, view_matrix, projection_matrix):
         # p.getCameraImage(self.camera_width, self.camera_height, self.view_matrix, self.projection_matrix, lightDirection=light_pos, shadow=shadow, lightAmbientCoeff=ambient, lightDiffuseCoeff=diffuse, lightSpecularCoeff=specular, renderer=p.ER_BULLET_HARDWARE_OPENGL, physicsClientId=self.id)
         # p.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=90, cameraPitch=-89.99, cameraTargetPosition=[0, 0, 0], physicsClientId=self.id)
@@ -616,7 +620,7 @@ class AssistiveEnv(gym.Env):
         agent = Agent()
         agent.init(body, self.id, self.np_random, indices=-1)
         return agent
-    
+
     def create_capsule(self, radius=0, length=0, position = [2,0,1], orientation = [0, 1, 1, 1], maximal_coordinates=False):
         collision_shape = p.createCollisionShape(p.GEOM_CAPSULE, radius=radius, height=length, physicsClientId=self.id)
         visual_shape = p.createVisualShape(p.GEOM_CAPSULE, radius=radius, length=length, rgbaColor=[0,0,0,1],physicsClientId=self.id)

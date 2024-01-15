@@ -1,6 +1,10 @@
 import gym, sys, argparse
 import numpy as np
 from .learn import make_env
+import os.path
+import pathlib
+import time
+import pybullet as p
 # import assistive_gym
 
 if sys.version_info < (3, 0):
@@ -14,48 +18,52 @@ def sample_action(env, coop):
 
 def viewer(env_name):
     coop = 'Human' in env_name
-    env = make_env(env_name, coop=True) if coop else gym.make(env_name)
+    seed = 18237961019803109524
+    target = 4
+    env = make_env(env_name, coop=True, seed=seed) if coop else gym.make(env_name)
+
     env.set_env_variations(
         collect_data = False,
         blanket_pose_var = False,
         high_pose_var = False,
         body_shape_var = False)
-    all_reward = []
-    # while True:
-    for i in range(100):
+
+    env.set_singulate(True)
+    env.set_recover(False)
+    env.set_target_limb_code(target)
+    env.set_seed_val(seed)
+
+    num_rollouts = 2
+
+    for i in range(num_rollouts):
         done = False
         env.render()
         observation = env.reset()
+        env.set_iteration(seed)
 
-        action = sample_action(env, coop)
-        if coop:
-            print('Robot observation size:', np.shape(observation['robot']), 'Human observation size:', np.shape(observation['human']), 'Robot action size:', np.shape(action['robot']), 'Human action size:', np.shape(action['human']))
+        uncover_action = sample_action(env, coop)
+        recover_action = sample_action(env, coop)
 
-        elif 'BeddingManipulationSphere-v1' in env_name:
-            action = np.array([0.3, 0.5, 0, 0])
-        elif 'RemoveContactSphere-v1' in env_name:
-            action = np.array([0.3, 0.45])
-        else:
-            pass
-            # print('Observation size:', np.shape(observation), 'Action size:', np.shape(action))
+        #Perform same action every time
+        uncover_action = np.array([ 0.77959553,  0.680941  ,  0.19683735, -0.17073987])
+        recover_action = np.array([-0.21,  0.49,  0.66,  0.47])
+
+        # uncover_action = np.array([ 0,0,0,0])
+        # recover_action = np.array([-0.21,  0.49,  0.66,  0.47])
 
         while not done:
-            observation, reward, done, info = env.step(sample_action(env, coop))
-            # action = np.array([ 0.15795245,  0.82185944,  0.00900022 ,-0.59316433])
-            # observation, reward, done, info = env.step(action)
+            cloth_intial, cloth_intermediate, _ = env.uncover_step(uncover_action)
+            cloth_final, _ = env.recover_step(recover_action)
+            observation, uncover_reward, recover_reward, done, info = env.get_info()
+
             if coop:
                 done = done['__all__']
-        print(f"Trial {i}: Reward = {reward:.2f}")
-        all_reward.append(reward)
 
-    print("Mean Reward:", np.mean(all_reward))
-    print("Reward Std:", np.std(all_reward))
-
+        # print(f"Trial {i}: Uncover Reward = {uncover_reward:.2f} Recover Reward = {recover_reward:.2f}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Assistive Gym Environment Viewer')
-    parser.add_argument('--env', default='ScratchItchJaco-v1',
-                        help='Environment to test (default: ScratchItchJaco-v1)')
+    parser.add_argument('--env', default='RobeReversible-v1')
     args = parser.parse_args()
 
     viewer(args.env)

@@ -27,11 +27,11 @@ from tqdm import tqdm
 class GNN_Manager():
     def __init__(self, device):
         self.set_device(device)
-    
+
     def set_device(self, device):
         self.device = torch.device(device)
         print("Device:", self.device)
-    
+
     def set_args(self, model_config):
         proc_layers = int(model_config['proc_layer_num'])
         learning_rate = float(model_config['learning_rate'])
@@ -43,7 +43,7 @@ class GNN_Manager():
 
         self.args = SimpleNamespace(seed=seed,
                                     learning_rate=learning_rate,
-                                    proc_layer_num=proc_layers, 
+                                    proc_layer_num=proc_layers,
                                     global_size=global_size,
                                     output_size=output_size,
                                     node_dim=node_dim,
@@ -52,7 +52,7 @@ class GNN_Manager():
     def set_training_config(self, initial_dataset=None, train_test=None, proc_layers=None, global_size=0, epochs=None, learning_rate=None, seed=None):
         node_dim = initial_dataset[0].x.shape[1]
         edge_dim = initial_dataset[0].edge_attr.shape[1]
-        output_size = initial_dataset[0].cloth_final.shape[1]
+        output_size = initial_dataset[0].cloth_displacement.shape[1]
         global_size = global_size
         config = configparser.ConfigParser()
         config['DEFAULT'] = {}
@@ -71,14 +71,14 @@ class GNN_Manager():
             'seed':seed,
             'learning_rate':learning_rate,
             'epochs':epochs,
-            'proc_layer_num':proc_layers, 
+            'proc_layer_num':proc_layers,
             'global_size':global_size,
             'output_size':output_size,
             'node_dim':node_dim,
             'edge_dim':edge_dim}
         with open(self.config_dir, 'w') as configfile:
             config.write(configfile)
-    
+
     #! COME BACK AND FINALIZE THIS
     def update_training_config(self, config, iter):
         config['Continual Learning Stats'][f'iteration {iter}'] = {
@@ -87,7 +87,7 @@ class GNN_Manager():
         }
         with open(self.config_dir, 'w') as configfile:
             config.write(configfile)
-    
+
 
     def set_initial_dataset(self, dataset, train_test=None):
         # if you pass a single float for train_test, interpret as the ratio of train:test points to use from the entire dataset
@@ -96,7 +96,7 @@ class GNN_Manager():
             train_len = round(len(dataset)*train_test_ratio)
             test_len = -1
         # if you pass a tuple for tr--9in_test, interpret as the number of train points and test points to select from the entire dataset of points
-        elif isinstance(train_test, tuple): 
+        elif isinstance(train_test, tuple):
             train_len = train_test[0]
             test_len = train_test[0] + train_test[1]
         self.TRAIN_DATASET = self.initial_dataset = dataset[:train_len]
@@ -118,7 +118,7 @@ class GNN_Manager():
         print("The number of training data is: %d" % len(self.TRAIN_DATASET))
         print("The number of test data is: %d" % len(self.TEST_DATASET))
         # print("The number of image data is: %d" % num_images)
-    
+
 
     def add_to_train_set(self, new_dataset):
 
@@ -149,10 +149,10 @@ class GNN_Manager():
             self.set_new_save_dir(new_save_dir)
         else:
             self.set_new_save_dir(model_dir)
-    
+
     def load_model(self, model_dir, model_checkpoint_number=None):
         checkpoint_dir = osp.join(model_dir, 'checkpoints')
-        
+
         # data_dir = osp.join(path, root, 'raw/*.pkl')
         if model_checkpoint_number==None:
             all_checkpoints = glob.glob(osp.join(checkpoint_dir, '*.pth'))
@@ -173,12 +173,12 @@ class GNN_Manager():
             self.model.load_state_dict(torch.load(checkpoint_path)['model'])
         self.model_criterion = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
-        self.optimizer.load_state_dict(torch.load(checkpoint_path)['optimizer'])
+        self.optimizer.load_state_dict(torch.load(checkpoint_path, map_location=torch.device('cpu'))['optimizer'])
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', factor=0.8, patience=3, verbose=True)
-    
+
     def delete_model(self):
         del self.model
-    
+
     def set_new_save_dir(self, new_save_dir):
         self.writer_dir = osp.join(new_save_dir, 'runs')
         self.writer = SummaryWriter(self.writer_dir)
@@ -190,7 +190,7 @@ class GNN_Manager():
         torch.cuda.empty_cache()
         # print(f"TEST: edge threshold = {edge_thres}, action to {action_to_node} nodes, processing layers = {proc_layers}")
         self.model_id = f"{model_descirption}_epochs={epochs}_batch={batch_size}_workers={num_workers}_{round(time.time())}"
-        
+
         self.set_new_save_dir(osp.join(save_dir, self.model_id))
         print(self.checkpoints_dir)
 
@@ -215,7 +215,7 @@ class GNN_Manager():
         dataset = self.initial_dataset
         node_dim = dataset[0].x.shape[1]
         edge_dim = dataset[0].edge_attr.shape[1]
-        output_size = dataset[0].cloth_final.shape[1]
+        output_size = dataset[0].cloth_displacement.shape[1]
         global_size = 0 #! Don't Hardcode
 
         print(f"Node feature length: {node_dim}, edge feature length: {edge_dim}, global_size: {global_size}, output size: {output_size}")
@@ -238,7 +238,7 @@ class GNN_Manager():
             'seed':seed,
             'learning_rate':learning_rate,
             'epochs':epochs,
-            'proc_layer_num':proc_layers, 
+            'proc_layer_num':proc_layers,
             'global_size':global_size,
             'output_size':output_size,
             'node_dim':node_dim,
@@ -259,7 +259,7 @@ class GNN_Manager():
 
 
         print("Set up complete")
-    
+
     def run(self, args, epoch, dataloader, mode, take_images=False, fig_dir=None):
         if mode == 'train':
             self.model.train()
@@ -297,14 +297,14 @@ class GNN_Manager():
                 # L1 norm for MSE
                 # state_predicted = state_predicted.contiguous().view(-1, 1)
                 # state_target = state_target.contiguous().view(-1, 1)
-                
+
                 # L2 norm for MSE
                 state_predicted = state_predicted.contiguous()
                 state_target = state_target.contiguous()
 
                 state_loss = self.model_criterion(state_predicted, state_target)
-                
-                
+
+
                 total_state_loss += state_loss.detach().item()
 
                 state_pred_numpy = state_predicted.data.detach().cpu().numpy().flatten()
@@ -316,7 +316,7 @@ class GNN_Manager():
                 if mode == 'train':
                     state_loss.backward()
                     self.optimizer.step()
-                
+
                 total_state_loss += state_loss.item()
 
                 if take_images:
@@ -324,10 +324,10 @@ class GNN_Manager():
                     figure.savefig(osp.join(fig_dir, f'eval_{i}.png'))
                     # plt.show()
                     plt.close()
-            
+
             if mode == 'train':
                 self.scheduler.step(total_state_loss / len(dataloader))
-            
+
 
 
         eval_metrics = {
@@ -348,9 +348,9 @@ class GNN_Manager():
             t0 = time.time()
             take_images = False
             train_metrics = self.run(
-                                    self.args, 
-                                    epoch, 
-                                    self.trainDataLoader, 
+                                    self.args,
+                                    epoch,
+                                    self.trainDataLoader,
                                     'train',
                                     take_images=False)
             t1 = time.time()
@@ -379,7 +379,7 @@ class GNN_Manager():
 
         self.writer.add_hparams(
         {'proc_layers': self.args.proc_layer_num},
-        {  
+        {
             'best_loss':best_loss,
             'best_rmse':best_rmse,
             'best_rele':best_rele,
@@ -391,20 +391,22 @@ class GNN_Manager():
         self.writer.close()
 
         print('Training Done!\n')
-    
+
     def evaluate(self, checkpoint_path):
 
         run_dir = "/home/kpputhuveetil/git/vBM-GNNdev/trained_models/test/runs"
         fig_dir = osp.join(run_dir, 'images')
         Path(fig_dir).mkdir(parents=True, exist_ok=True)
         eval_metrics = self.run(
-                                self.args, 
-                                None, 
-                                self.testDataLoader, 
+                                self.args,
+                                None,
+                                self.testDataLoader,
                                 'eval',
                                 take_images=False)
         print(eval_metrics)
         torch.cuda.empty_cache()
         print('Evaluation Done!\n')
 
-    
+
+
+# %%

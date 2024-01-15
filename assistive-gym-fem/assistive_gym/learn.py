@@ -7,10 +7,11 @@ from ray.tune.logger import pretty_print
 from numpngw import write_apng
 import pathlib, pickle,time
 import keras
-from .envs.bu_gnn_util import *
+sys.path.append("./")
+sys.path.append("/env")
+
+# from envs.bu_gnn_util import *
 from tqdm import tqdm
-
-
 
 def setup_config(env, algo, coop=False, seed=0, extra_configs={}, num_processes=None):
     if num_processes is None:
@@ -230,11 +231,11 @@ def evaluate_policy(env_name, algo, policy_path, n_episodes=100, coop=False, see
         #    grasp_not_over_blanket_count += 1
 
         rewards.append(reward)
-    
+
         pickle.dump({
-            "total_elapsed_time":total_elapsed_time, 
+            "total_elapsed_time":total_elapsed_time,
             "action": action,
-            "reward": reward, 
+            "reward": reward,
             "observation":obs,
             "elapsed_time": elapsed_time,
             "info":info}, f)
@@ -272,7 +273,7 @@ def evaluate_policy_real_world(policy_path, target_limb_code, observation, coop=
     t1 = time.time()
 
     elapsed_time = t1-t0
-    
+
     return action, elapsed_time
 
 

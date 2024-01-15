@@ -10,7 +10,7 @@ import pandas as pd
 import torch, torch_geometric
 from torch_geometric.data import Dataset, Data
 from pathlib import Path
-sys.path.insert(0, '/home/kpputhuveetil/git/vBM-GNNdev/assistive-gym-fem')
+sys.path.insert(0, '/home/kpputhuveetil/git/robe/robust-body-exposure/assistive-gym-fem')
 from assistive_gym.envs.bu_gnn_util import *
 
 #%%
@@ -41,14 +41,13 @@ class Runtime_Graph():
             cloth_initial = self.rotate_draping_cloth_points(cloth_initial)
         if self.subsample:
             cloth_initial = self.sub_sample_point_clouds(cloth_initial)
-        
+
         self.initial_blanket_state = cloth_initial
 
-            
         self.edge_indices = get_edge_connectivity(self.initial_blanket_state, self.edge_threshold, self.cloth_dim)
         if self.cloth_dim == 2:
             self.initial_blanket_state = np.delete(np.array(self.initial_blanket_state), 2, axis = 1)
-        
+
         self.edge_features = torch.zeros(self.edge_indices.size()[0], 1, dtype=torch.float)
         self.global_vector = torch.zeros(1, 0, dtype=torch.float32)
 
@@ -69,9 +68,9 @@ class Runtime_Graph():
         )
 
         return data
-    
+
     #!! REPLACE WITH BU GNN FUNCTIONS
-    
+
     def get_node_features(self, cloth_initial, action):
         """
         returns an array with shape (# nodes, node feature size)
@@ -171,7 +170,7 @@ class Runtime_Graph():
 
         return cloth_initial_drap_rot_3D
 
-    
+
 
     # ! USE FUNCTION IN BU_GNN_UTIL INSTEAD
     def sub_sample_point_clouds(self, cloth_initial_3D_pos):
@@ -196,7 +195,7 @@ class Runtime_Graph():
         for idx,vox in enumerate(non_empty_voxel_keys):
             voxel_grid[tuple(vox)]= cloth_initial[idx_pts_vox_sorted[last_seen:last_seen+nb_pts_per_voxel[idx]]]
             voxel_grid_cloth_inds[tuple(vox)] = idx_pts_vox_sorted[last_seen:last_seen+nb_pts_per_voxel[idx]]
-            
+
             closest_point_to_barycenter = np.linalg.norm(voxel_grid[tuple(vox)] - np.mean(voxel_grid[tuple(vox)],axis=0),axis=1).argmin()
             cloth_initial_subsample.append(voxel_grid[tuple(vox)][closest_point_to_barycenter])
 
@@ -216,7 +215,7 @@ class Runtime_Graph():
         cloth_i_tensor = torch.tensor(cloth_initial_pos, dtype=torch.float)
         cloth_f_tensor = torch.tensor(cloth_final_pos, dtype=torch.float)
         return cloth_i_tensor, cloth_f_tensor
-    
+
     # def dict_to_Data(self, data_dict):
     #     data = Data(
     #         x = data_dict['x'],
