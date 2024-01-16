@@ -149,7 +149,7 @@ if __name__ == "__main__":
     np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 
     counter = 0
-    num_processes = 1
+    num_processes = 100
     trials = args.rollouts
     counter = 0
     result_objs = []
