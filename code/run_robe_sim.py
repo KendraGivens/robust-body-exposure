@@ -29,13 +29,17 @@ recover = False
 test = False
 model_path_uncover = '/home/kpputhuveetil/git/robe/robust-body-exposure/trained_models/FINAL_MODELS/standard_2D_not_subsampled_epochs=250_batch=100_workers=4_1687986938'
 
+seed_path = '/home/kpputhuveetil/git/robe/robust-body-exposure/trained_models/FINAL_MODELS/Uncover/TL_All__Uncover_Model_10k_Old_Grasp_10000_epochs=250_batch=100_workers=4_1706810068/cma_evaluations/TL_All_Uncover_Evals_500_states_1706823382593/raw'
+filenames = list(Path(seed_path).glob('*.pkl'))
+filenames_iterated = iter(filenames)
+
 eval_dir_name = 'cma_evaluations'
 search_dir = osp.join(model_path_uncover, eval_dir_name)
 
 eval_conditions = ['TL_[2, 4, 5, 8, 10, 11, 12, 13, 14, 15]_Uncover_Evals_Train_1000_states']
 
 x0 = []
-target_limb_list =  [5]
+target_limb_list =  [2, 4, 5, 8, 10, 11, 12, 13, 14, 15]
 
 #* parameters for the graph representation of the cloth fed as inpurecoveringt to the model
 all_graph_configs = {
@@ -108,7 +112,7 @@ def find(seed):
             if str(seed) in f.name:
                 return f
     #%%
-def gnn_cma(env_name, idx, model, device, target_limb_code, iter_data_dir, graph_config, env_var, max_fevals):
+def gnn_cma(seed, target, env_name, idx, model, device, target_limb_code, iter_data_dir, graph_config, env_var, max_fevals):
     use_disp = graph_config['use_disp']
     filter_draping = graph_config['filt_drape']
     rot_draping = graph_config['rot_drape']
@@ -119,7 +123,9 @@ def gnn_cma(env_name, idx, model, device, target_limb_code, iter_data_dir, graph
     if target_limb_code is None:
         target_limb_code = random.sample(target_limb_list, 1)[0]
 
-    seed = seeding.create_seed()
+    target_limb_code = target
+
+    # seed = seeding.create_seed()
 
     # choose uncovered state from test set to recover from
     if recover:
@@ -274,12 +280,14 @@ def gnn_cma(env_name, idx, model, device, target_limb_code, iter_data_dir, graph
 def evaluate_dyn_model(env_name, target_limb_code, trials, model, iter_data_dir, device, num_processes, graph_config, env_variations, max_fevals):
 
     result_objs = []
-    # ! Why doing trials/num_processes? equals 1
     for j in tqdm(range(math.ceil(trials/num_processes))):
         with multiprocessing.Pool(processes=num_processes) as pool:
             for i in range(num_processes):
+                filename = next(filenames_iterated)
                 idx = i+(j*num_processes)
-                result = pool.apply_async(gnn_cma, args = (env_name, idx, model, device, target_limb_code, iter_data_dir, graph_config, env_variations, max_fevals), callback=counter_callback)
+                target = int(filename.name.split('_')[0][2:])
+                seed = int(filename.name.split('_')[2])
+                result = pool.apply_async(gnn_cma, args = (seed, target, env_name, idx, model, device, target_limb_code, iter_data_dir, graph_config, env_variations, max_fevals), callback=counter_callback)
                 result_objs.append(result)
 
             results = [result.get() for result in result_objs]
@@ -300,11 +308,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--eval-multiple-models', type=bool, default=False)
-    parser.add_argument('--model-path', type=str)
-    parser.add_argument('--graph-config', type=str)
-    parser.add_argument('--env-var', type=str)
+    parser.add_argument('--model-path', type=str, default = 'Uncover/TL_All__Uncover_Model_10k_New_Grasp_10000_epochs=250_batch=100_workers=4_1706814845')
+    parser.add_argument('--graph-config', type=str, default='2D')
+    parser.add_argument('--env-var', type=str, default='standard')
     parser.add_argument('--max-fevals', type=int, default=300)
-    parser.add_argument('--num-rollouts', type=int, default=1000)
+    parser.add_argument('--num-rollouts', type=int, default=500)
     parser.add_argument('--arg_seed', type=int, default=0)
     args = parser.parse_args()
 
@@ -315,6 +323,8 @@ if __name__ == '__main__':
             'env_var':args.env_var,
             'max_fevals':args.max_fevals
         }]
+
+
 
     env_name = "RobeReversible-v1"
 
@@ -328,7 +338,6 @@ if __name__ == '__main__':
     if recover:
         test_string = ''
 
-
     for i in range(len(loop_data)):
         data = loop_data[i]
         checkpoint= osp.join(trained_models_dir, data['model'])
@@ -337,7 +346,7 @@ if __name__ == '__main__':
         graph_config = all_graph_configs[data['graph_config']]
         max_fevals = data['max_fevals']
 
-        data_dir = osp.join(checkpoint, f'cma_evaluations/TL_{target_limb_list}_{recover_string}_{test_string}_{args.num_rollouts}_states')
+        data_dir = osp.join(checkpoint, f'cma_evaluations/TL_All_{recover_string}_{args.num_rollouts}_states_{int(time.time()*1000)}')
         Path(data_dir).mkdir(parents=True, exist_ok=True)
 
         device = 'cpu'

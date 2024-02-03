@@ -14,17 +14,17 @@ import matplotlib.pyplot as plt
 from assistive_gym.envs.bu_gnn_util import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--arg_model', type=str, default='standard_2D_not_subsampled_epochs=250_batch=100_workers=4_1687986938')
+parser.add_argument('--arg_model', type=str, default='TL_All__Uncover_Model_10k_Old_Grasp_10000_epochs=250_batch=100_workers=4_1706810068')
 # parser.add_argument('--arg_model', type=str, default='standard_2D_not_subsampled_epochs=250_batch=100_workers=4_1687986938')
 
 args = parser.parse_args()
 
-model_dir = '/home/kpputhuveetil/git/robe/robust-body-exposure/trained_models/FINAL_MODELS/'
+model_dir = '/home/kpputhuveetil/git/robe/robust-body-exposure/trained_models/FINAL_MODELS/Uncover'
 model = args.arg_model
 model_path = osp.join(model_dir, model)
 eval_dir_name = 'cma_evaluations'
 
-eval_conditions = ['TL_[2, 4, 5, 8, 10, 11, 12, 13, 14, 15]_Uncover_Evals_Train_New_Grasp'] #[next(f for f in (Path(model_path)/eval_dir_name).iterdir() if f.name.startswith("standard")).name]
+eval_conditions = ['TL_All_Uncover_Evals_500_states_1706823382593'] #[next(f for f in (Path(model_path)/eval_dir_name).iterdir() if f.name.startswith("standard")).name]
 
 threshold = 0.745
 
@@ -104,24 +104,24 @@ for eval_condition in eval_conditions:
                                                                             pred)
 
                 if not recover:
-                    if sim_fscore >= threshold:
-                        fig = generate_figure_uncover(
-                            sim_reward,
-                            cma_reward,
-                            target_limb_code,
-                            uncover_action,
-                            body_info,
-                            all_body_points,
-                            cloth_initial,
-                            final_cloths = [cloth_final, pred],
-                            initial_covered_status = [initial_covered_status],
-                            covered_statuses = [sim_covered_status, cma_covered_status] ,
-                            fscores = [sim_fscore, cma_fscore],
-                            plot_initial=True, compare_subplots=False)
+                    # if sim_fscore >= threshold:
+                    fig = generate_figure_uncover(
+                        sim_reward,
+                        cma_reward,
+                        target_limb_code,
+                        uncover_action,
+                        body_info,
+                        all_body_points,
+                        cloth_initial,
+                        final_cloths = [cloth_final, pred],
+                        initial_covered_status = [initial_covered_status],
+                        covered_statuses = [sim_covered_status, cma_covered_status] ,
+                        fscores = [sim_fscore, cma_fscore],
+                        plot_initial=True, compare_subplots=False)
 
-                        img_file = f'{target_limb_code}_{seed}_f-score={sim_fscore}.png'
+                    img_file = f'{target_limb_code}_{seed}_f-score={sim_fscore}.png'
 
-                        fig.write_image(osp.join(image_dir, img_file))
+                    fig.write_image(osp.join(image_dir, img_file))
                 else:
                     fig = generate_figure_recover(
                             sim_info_fscore,

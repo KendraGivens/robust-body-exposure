@@ -18,7 +18,7 @@ def sample_action(env, coop):
 
 def viewer(env_name):
     coop = 'Human' in env_name
-    seed = 18237961019803109524
+    seed = 17488013661012010410
     target = 4
     env = make_env(env_name, coop=True, seed=seed) if coop else gym.make(env_name)
 
@@ -28,12 +28,12 @@ def viewer(env_name):
         high_pose_var = False,
         body_shape_var = False)
 
-    env.set_singulate(True)
-    env.set_recover(False)
+    env.set_singulate(False)
+    env.set_recover(True)
     env.set_target_limb_code(target)
     env.set_seed_val(seed)
 
-    num_rollouts = 2
+    num_rollouts = 1
 
     for i in range(num_rollouts):
         done = False
@@ -45,11 +45,8 @@ def viewer(env_name):
         recover_action = sample_action(env, coop)
 
         #Perform same action every time
-        uncover_action = np.array([ 0.77959553,  0.680941  ,  0.19683735, -0.17073987])
-        recover_action = np.array([-0.21,  0.49,  0.66,  0.47])
-
-        # uncover_action = np.array([ 0,0,0,0])
-        # recover_action = np.array([-0.21,  0.49,  0.66,  0.47])
+        uncover_action = np.array([0.84031646,  0.60455064,  0.00243699, -0.26175723])
+        recover_action = np.array([.2, 0, 0.84031646,  0.60455064])
 
         while not done:
             cloth_intial, cloth_intermediate, _ = env.uncover_step(uncover_action)

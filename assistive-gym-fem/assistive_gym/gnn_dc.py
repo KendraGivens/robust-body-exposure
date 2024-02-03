@@ -87,7 +87,7 @@ def gnn_data_collect(env_name, i, filename, seed, raw_data):
     cloth_initial_sim, cloth_intermediate_sim, execute_uncover_action = env.uncover_step(uncover_action)
 
     if not execute_uncover_action:
-        return [filename, pid]
+        return [i, filename, pid]
 
     if recover:
         while not on_grasp:
@@ -100,7 +100,7 @@ def gnn_data_collect(env_name, i, filename, seed, raw_data):
     if not recover:
         recover_action = []
 
-    filename = f"c_{target}_{seed}_pid{pid}"
+    filename = f"c_{target}_{seed}_{int(time.time()*1000)}"
     with open(osp.join(pkl_loc, filename +".pkl"),"wb") as f:
         pickle.dump({
             "recovering":recover,
@@ -108,7 +108,6 @@ def gnn_data_collect(env_name, i, filename, seed, raw_data):
             "info":info,
             "uncover_action":uncover_action,
             "recover_action":recover_action}, f)
-
     output = [i, filename, pid]
     del env
 
@@ -117,8 +116,7 @@ def gnn_data_collect(env_name, i, filename, seed, raw_data):
 def counter_callback(output):
     global counter
     counter += 1
-    # print(f"{counter} - Trial Completed: {output[0]}, Worker: {output[2]}, Filename: {output[1]}")
-    print(f"Trial Completed: {output[0]}, Worker: {os.getpid()}, Filename: {output[1]}")
+    print(f"{counter} - Trial Completed: {output[0]}, Worker: {os.getpid()}, Filename: {output[1]}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Data collection for gnn training')
@@ -141,11 +139,9 @@ if __name__ == "__main__":
     if recover:
         recover_string = 'Recover_Data'
 
-    variation_type = f'TL_{args.target_limb_list}_{recover_string}_{args.num_seeds}_seeds_{args.rollouts}_states2' # for uncovering states are the random actions, for recovering states are = num_seeds
-
+    variation_type = f'TL_{args.target_limb_list}_{recover_string}_{args.num_seeds}_seeds_{args.rollouts}_states4' # for uncovering states are the random actions, for recovering states are = num_seeds
     pkl_loc = os.path.join(current_dir, "DATASETS",recover_string, variation_type, 'raw')
     pathlib.Path(pkl_loc).mkdir(parents=True, exist_ok=True)
-
     np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 
     counter = 0
@@ -154,32 +150,35 @@ if __name__ == "__main__":
     counter = 0
     result_objs = []
 
-    filenames_iterated = filenames * 30
+    dataset_path = '/home/kpputhuveetil/git/robe/robust-body-exposure/DATASETS/Recover_Data/TL_2, 4, 5, 8, 10, 11, 12, 13, 14, 15_Recover_Data_100_seeds_30000_states3/raw'
+    filenames_recover = list(Path(dataset_path).glob('*.pkl'))
 
-    # for j in range(math.ceil(trials/num_processes)):
-    #     with multiprocessing.Pool(processes=num_processes) as pool:
-    #         # for i in range(num_processes):
-    #             # result = pool.apply_async(gnn_data_collect, args = (args.env, i), callback=counter_callback)
-    #         result = pool.map(gnn_data_collect, zip(cycle([args.env]), map(int, np.repeat(seed_list, args.rollouts//args.num_seeds//len(target_limb_list)))))
-    #             # result_objs.append(result)
+    processed = {}
+    for filename in filenames_recover:
+        target = int(filename.name.split('_')[1])
+        seed = int(filename.name.split('_')[2])
 
-            # results = [result.get() for result in result_objs]
+        if (target, seed) not in processed:
+            processed[(target, seed)] = 0
+        processed[(target, seed)] += 1
 
-    # with multiprocessing.Pool(processes=num_processes) as pool:
-    #     for batch in range(math.ceil(trials/num_processes)):
-    #         for i in range(num_processes):
-    #             filename = filenames[(batch*num_processes+i)%len(filenames)]
-    #             with open(filename, 'rb') as f:
-    #                 raw_data  = pickle.load(f)
-    #                 seed = int(filename.name.split('_')[2])
-    #             result = pool.apply_async(gnn_data_collect, args = ('RobeReversible-v1', i, filename.name, seed, raw_data), callback=counter_callback)
-    #             result_objs.append(result)
-    #         results = [result.get() for result in result_objs]
+    filenames_iterated = []
+    for filename in filenames * 30:
+        target = int(filename.name.split('_')[0][2:])
+        seed = int(filename.name.split('_')[2])
+        if (target, seed) in processed and processed[(target, seed)] > 0:
+            processed[(target, seed)] -= 1
+            continue
+        filenames_iterated.append(filename)
+    trials = len(filenames_iterated)
+    print(trials)
 
+    filename_index = 0
     for j in range(math.ceil(trials/num_processes)):
         with multiprocessing.Pool(processes=num_processes) as pool:
-            for i in range(num_processes):
-                filename = filenames_iterated[i+i*j]
+            for i in range(min(num_processes, trials - filename_index)):
+                filename = filenames_iterated[filename_index]
+                filename_index += 1
                 with open(filename, 'rb') as f:
                     raw_data = pickle.load(f)
                     seed = int(filename.name.split('_')[2])

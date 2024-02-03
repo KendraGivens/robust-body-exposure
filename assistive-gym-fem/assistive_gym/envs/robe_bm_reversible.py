@@ -128,6 +128,16 @@ class RobeReversibleEnv(AssistiveEnv):
             self.mesh_dict[v1].append(v2)
             self.mesh_dict[v2].append(v1)
 
+        for i, v in enumerate(self.cloth_initial[1]):
+            color = [0, 0, 0]
+            if i in [527, 14, 394]:
+                color = [1, 0, 0]
+            p.addUserDebugText(text=str(i), textPosition=v, textColorRGB=color, textSize=1, lifeTime=0, physicsClientId=self.id)
+
+        time.sleep(1000)
+
+        p.setGravity(0, 0, 0, physicsClientId=self.id)
+
         # * calculate distance between the 2D grasp location and every point on the blanket, anchor points are the 4 points on the blanket closest to the 2D grasp location
         dist, is_on_cloth = check_grasp_on_cloth(uncover_action, np.array(self.cloth_initial[1]), clipping_thres=.028)
         # * if no points on the blanket are within 2.8 cm of the grasp location, exit (if collecting data) or proceed without executing the action (in all other conditions)
@@ -135,21 +145,23 @@ class RobeReversibleEnv(AssistiveEnv):
             self.execute_uncover_action = False
             self.cloth_intermediate = self.cloth_initial
 
+        if self.
         if self.execute_uncover_action:
             if self.singulate_layers:
-                # get the highest vertex near the grasp point
                 highest_vertex = singulate_layer_height(grasp_loc, np.array(self.cloth_initial[1]))
-                # change the anchor index to be the triangle of points connected to the highest vertex
                 break_outer = False
                 for i, v1 in enumerate(self.mesh_dict[highest_vertex]):
                     rest = self.mesh_dict[highest_vertex][:i] + self.mesh_dict[highest_vertex][i+1:]
-                    for j in rest:
-                        if v1 in self.mesh_dict[j]:
-                            v2 = j
+                    for v2 in rest:
+                        if v1 in self.mesh_dict[v2]:
                             break_outer = True
                             break
                     if break_outer:
                         break
+                for i, v3 in enumerate(self.mesh_dict[v2]):
+                    rest = self.mesh_dict[highest_vertex][:i] + self.mesh_dict[highest_vertex][i+1:]
+                    for
+
                 self.anchor_idx = [highest_vertex, v1, v2]
             else:
                 self.anchor_idx = np.argpartition(np.array(dist), 4)[:4] # Finding set of points closest to grasp point
@@ -248,16 +260,6 @@ class RobeReversibleEnv(AssistiveEnv):
                 self.anchor_idx = np.argpartition(np.array(dist), 4)[:4] # Finding set of points closest to grasp point
             # * update grasp_loc var with the location of the central anchor point on the cloth
             grasp_loc = np.array(self.cloth_intermediate[1][self.anchor_idx[0]][0:2])
-
-            # for i, v in enumerate(self.cloth_initial[1]):
-            #     color = [0, 0, 0]
-            #     if i in [527, 14, 394]:
-            #         color = [1, 0, 0]
-            #     p.addUserDebugText(text=str(i), textPosition=v, textColorRGB=color, textSize=1, lifeTime=0, physicsClientId=self.id)
-
-            # time.sleep(1000)
-
-            # p.setGravity(0, 0, 0, physicsClientId=self.id)
 
             # * move sphere down to the anchor point on the blanket, create anchor point (central point first, then remaining points) and store constraint ids
             self.sphere_ee.set_base_pos_orient(self.cloth_intermediate[1][self.anchor_idx[0]], np.array([0,0,0]))

@@ -13,17 +13,14 @@ import matplotlib.pyplot as plt
 from assistive_gym.envs.bu_gnn_util import *
 import time
 
-model_path = '/home/kpputhuveetil/git/robe/robust-body-exposure/DATASETS/Recover_Data/TL_2, 4, 5, 8, 10, 11, 12, 13, 14, 15_Recover_Data_100_seeds_30000_states2/raw' #'TL_2, 4, 5, 8, 10, 11, 12, 13, 14, 15_Recover_Data_100_seeds_10000_states_lowerbody/raw'
-
-image_dir = osp.join(model_path, 'data_images')
+model_path = '/home/kpputhuveetil/git/robe/robust-body-exposure/DATASETS/Recover_Data/TL_2, 4, 5, 8, 10, 11, 12, 13, 14, 15_Recover_Data_100_seeds_30000_states/raw' #'TL_2, 4, 5, 8, 10, 11, 12, 13, 14, 15_Recover_Data_100_seeds_10000_states_lowerbody/raw'
+dataset = 'TL_2, 4, 5, 8, 10, 11, 12, 13, 14, 15_Recover_Data_100_seeds_30000_states'
+image_path = '/home/kpputhuveetil/git/robe/robust-body-exposure/DATASETS/Recover_Data'
+image_dir = osp.join(image_path, 'images', dataset)
 
 Path(image_dir).mkdir(parents=True, exist_ok=True)
 
 filenames = Path(model_path).glob('*.pkl')
-
-# data_dir = '/home/kpputhuveetil/git/robe/robust-body-exposure/trained_models/FINAL_MODELS/tl4_10k_10000_epochs=250_batch=100_workers=4_1695851095/cma_evaluations/standard_300_1696401567/raw'
-# file = 'tl4_c0_2918277101486668407_pid103945.pkl'
-# raw_data_original = pickle.load(open(osp.join(data_dir, file), 'rb'))
 
 ##%%
 for i, filename in enumerate(filenames):
@@ -34,13 +31,9 @@ for i, filename in enumerate(filenames):
 
         if 'cloth_initial' not in raw_data['info']:
             continue
-
         tl = filename.name.split('/')[-1]
         fig_id = filename.name.split('_')[2]
         tl = filename.name.split('_')[0]
-
-        tl_dir = osp.join(image_dir, tl)
-        Path(tl_dir).mkdir(parents=True, exist_ok=True)
 
         cloth_initial = np.array(raw_data['info']['cloth_initial'][1])
         cloth_intermediate = np.array(raw_data['info']['cloth_intermediate'][1])
@@ -53,7 +46,7 @@ for i, filename in enumerate(filenames):
         # body_info = raw_data_original['sim_info']['info']['human_body_info']
         # all_body_points = get_body_points_from_obs(human_pose, target_limb_code=target_limb_code, body_info=body_info)
 
-        target_limb_code = []
+        target_limb_code = filename.name.split('_')[1]
         body_info = []
         all_body_points = []
 
@@ -75,7 +68,7 @@ for i, filename in enumerate(filenames):
         #     cloth_final,
         #     plot_initial=True, compare_subplots=True)
 
-        img_file = f'{time.time()}_{seed}.png'
+        img_file = f'{target_limb_code}_{seed}_{time.time()}.png'
         # fig.show()
         fig.write_image(osp.join(image_dir, img_file))
 

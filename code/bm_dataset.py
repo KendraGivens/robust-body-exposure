@@ -29,7 +29,6 @@ class BMDataset(Dataset):
         raw folder contains original pickle files
         prprocessed will be filled with the dataset when this class is instantiated
         """
-        print(root)
         self.recover = recover
         self.voxel_size = voxel_size
         self.subsample = True if not (np.isnan(self.voxel_size)) else False
@@ -148,7 +147,7 @@ class BMDataset(Dataset):
             action = raw_data['recover_action']
             initial_blanket_state = raw_data['info']['cloth_intermediate'][1]
         else:
-            action = raw_data['uncover_action']
+            action = raw_data['action'] #raw_data['uncover_action']
             initial_blanket_state = raw_data['info']['cloth_initial'][1]
 
         human_pose = raw_data['observation'][0]

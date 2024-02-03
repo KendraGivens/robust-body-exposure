@@ -30,12 +30,15 @@ import gradient_free_optimizers as gfo
 #%%
 recover = True
 test = False
-model_path_uncover = '/home/kpputhuveetil/git/robe/robust-body-exposure/trained_models/FINAL_MODELS/standard_2D_not_subsampled_epochs=250_batch=100_workers=4_1687986938'
+model_path_uncover = '/home/kpputhuveetil/git/robe/robust-body-exposure/trained_models/FINAL_MODELS/TL_2, 4, 5, 8, 10, 11, 12, 13, 14, 15_Uncover_10000_states_New_Grasp_16000_epochs=250_batch=50_workers=4_1705905825'
 
 eval_dir_name = 'cma_evaluations'
 search_dir = osp.join(model_path_uncover, eval_dir_name)
 
-eval_conditions = ['TL_[2, 4, 5, 8, 10, 11, 12, 13, 14, 15]_Uncover_Evals_Test_1000_states']
+eval_conditions = ['TL_[2, 4, 5, 8, 10, 11, 12, 13, 14, 15]_Uncover_Evals_Train_500_states']
+data_path = osp.join(model_path_uncover, eval_dir_name, eval_conditions[0], 'raw/')
+
+filenames = list(Path(data_path).glob('*.pkl'))
 
 x0 = []
 target_limb_list = [2, 4, 5, 8, 10, 11, 12, 13, 14, 15]
@@ -145,6 +148,7 @@ def optimizer(env_name, idx, model, device, target_limb_code, iter_data_dir, gra
         high_pose_var = env_var['high_pose_var'],
         body_shape_var = env_var['body_shape_var'])
 
+    env.set_singulate(True)
     env.set_target_limb_code(target_limb_code)
     env.set_recover(recover)
     env.set_seed_val(seed)
@@ -161,7 +165,6 @@ def optimizer(env_name, idx, model, device, target_limb_code, iter_data_dir, gra
     else:
         cloth_initial_dc = []
         input_cloth = env.get_cloth_state()
-
     env.set_target_limb_code(target_limb_code)
     pop_size = 8
 
@@ -223,6 +226,7 @@ def optimizer(env_name, idx, model, device, target_limb_code, iter_data_dir, gra
     best_para = opt.best_para
 
     best_action = para_to_action(best_para)
+
     best_time = t1-t0
     best_fevals = None
     best_iterations = None

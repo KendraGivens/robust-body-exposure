@@ -17,10 +17,10 @@ from assistive_gym.envs.bu_gnn_util import *
 from cma_gnn_util import *
 from tabulate import tabulate
 
-model_dir = './trained_models/FINAL_MODELS'
+model_dir = './trained_models/FINAL_MODELS/'
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--arg_model', type=str, default='/home/kpputhuveetil/git/robe/robust-body-exposure/trained_models/FINAL_MODELS/standard_2D_not_subsampled_epochs=250_batch=100_workers=4_1687986938')
+parser.add_argument('--arg_model', type=str, default='Uncover/TL_All__Uncover_Model_10k_New_Grasp_10000_epochs=250_batch=100_workers=4_1706814845')
 parser.add_argument('--tlc', type=int, default=4)
 
 args = parser.parse_args()
@@ -29,7 +29,7 @@ model = args.arg_model
 model_path = osp.join(model_dir, model)
 eval_dir_name = 'cma_evaluations'
 
-eval_conditions = ['TL_[2, 4, 5, 8, 10, 11, 12, 13, 14, 15]_Uncover_Evals_Train_1000_states']
+eval_conditions = ['TL_All_Uncover_Evals_500_states_1706828964151']
 parsed_file_dir = Path('TL_[2, 4, 5, 8, 10, 11, 12, 13, 14, 15]_Uncover_Evals_Train_1000_states')
 # eval_conditions = ['TL_[2, 4, 5, 8, 10, 11, 12, 13, 14, 15]_Recover_Evals__1000_states_RandomSearch_Opt']
 target_limbs = [2, 4, 5, 8, 10, 11, 12, 13, 14, 15]
@@ -57,7 +57,6 @@ for eval_condition in eval_conditions:
     seed = 0
 
     for filename in filenames:
-
         with open(filename, 'rb') as f:
 
             #Parse filename to get the seed out
@@ -66,74 +65,78 @@ for eval_condition in eval_conditions:
             raw_data = pickle.load(f)
             target_limb_code = int(filename.name.split('_')[0][2:])
             plt.close()
-            if True:
-                recover = raw_data['recovering']
 
-                cma_reward = raw_data['cma_info']['best_reward']
+            recover = False #raw_data['recovering']
 
-                if recover:
-                    sim_reward = raw_data['sim_info']['recover_reward']
+            cma_reward = raw_data['cma_info']['best_reward']
+
+            if recover:
+                sim_reward = raw_data['sim_info']['recover_reward']
+            else:
+                if 'uncover_reward' in raw_data['sim_info']:
+                    sim_reward = raw_data['sim_info']['uncover_reward']
                 else:
-                    if 'uncover_reward' in raw_data['sim_info']:
-                        sim_reward = raw_data['sim_info']['uncover_reward']
-                    else:
-                        sim_reward = raw_data['sim_info']['uncover reward']
+                    sim_reward = raw_data['sim_info']['uncover reward']
 
-                targ_data_reward[0][target_limb_code].append(cma_reward)
-                targ_data_reward[1][target_limb_code].append(sim_reward)
+            targ_data_reward[0][target_limb_code].append(cma_reward)
+            targ_data_reward[1][target_limb_code].append(sim_reward)
+            cloth_initial = raw_data['sim_info']['info']['cloth_initial'][1]
 
-                cloth_initial = raw_data['sim_info']['info']['cloth_initial'][1]
+            if recover:
+                cloth_intermediate = raw_data['sim_info']['info']['cloth_intermediate'][1]
 
-                if recover:
-                    cloth_intermediate = raw_data['sim_info']['info']['cloth_intermediate'][1]
+            cloth_final = raw_data['sim_info']['info']['cloth_final'][1]
+            pred = raw_data['cma_info']['best_pred']
 
-                cloth_final = raw_data['sim_info']['info']['cloth_final'][1]
-                pred = raw_data['cma_info']['best_pred']
+            human_pose = raw_data['human_pose']
+            body_info = raw_data['info']['human_body_info']
+            count_ng += 1
 
-                human_pose = raw_data['human_pose']
-                body_info = raw_data['info']['human_body_info']
-                count_ng += 1
+            all_body_points = get_body_points_from_obs(human_pose, target_limb_code=target_limb_code, body_info=body_info)
+            initial_covered_status = get_covered_status(all_body_points, np.delete(np.array(cloth_initial), 2, axis = 1))
+            if recover:
+                intermediate_covered_status = get_covered_status(all_body_points, np.delete(np.array(cloth_intermediate), 2, axis = 1))
 
-                all_body_points = get_body_points_from_obs(human_pose, target_limb_code=target_limb_code, body_info=body_info)
-                initial_covered_status = get_covered_status(all_body_points, np.delete(np.array(cloth_initial), 2, axis = 1))
-                if recover:
-                    intermediate_covered_status = get_covered_status(all_body_points, np.delete(np.array(cloth_intermediate), 2, axis = 1))
+            cma_covered_status = get_covered_status(all_body_points, pred)
+            sim_covered_status = get_covered_status(all_body_points, np.delete(np.array(cloth_final), 2, axis = 1))
 
-                cma_covered_status = get_covered_status(all_body_points, pred)
-                sim_covered_status = get_covered_status(all_body_points, np.delete(np.array(cloth_final), 2, axis = 1))
+            # cma_covered_status = raw_data['cma_info']['best_covered_status']
+            # sim_covered_status = raw_data['sim_info']['info']['covered_status_sim']
 
-                # cma_covered_status = raw_data['cma_info']['best_covered_status']
-                # sim_covered_status = raw_data['sim_info']['info']['covered_status_sim']
+            if recover:
+                sim_fscore = compute_fscore_recover(initial_covered_status, intermediate_covered_status, sim_covered_status, False)
+                cma_fscore  = compute_fscore_recover(initial_covered_status, intermediate_covered_status, cma_covered_status, False)
+            else:
+                sim_fscore = compute_fscore_uncover(initial_covered_status, sim_covered_status)
+                cma_fscore = compute_fscore_uncover(initial_covered_status, cma_covered_status)
 
-                if recover:
-                    sim_fscore = compute_fscore_recover(initial_covered_status, intermediate_covered_status, sim_covered_status, False)
-                    cma_fscore  = compute_fscore_recover(initial_covered_status, intermediate_covered_status, cma_covered_status, False)
-                else:
-                    sim_fscore = compute_fscore_uncover(initial_covered_status, sim_covered_status)
-                    cma_fscore = compute_fscore_uncover(initial_covered_status, cma_covered_status)
+            # if sim_fscore >= threshold:
+            #     with open(output_path/filename.name, 'wb') as f:
+            #         pickle.dump(raw_data, f)
 
-                # if sim_fscore >= threshold:
-                #     with open(output_path/filename.name, 'wb') as f:
-                #         pickle.dump(raw_data, f)
+            count[target_limb_code] += 1
 
-                    count[target_limb_code] += 1
+            target_index = target_limbs.index(target_limb_code)
 
-                target_index = target_limbs.index(target_limb_code)
-
+            if recover:
                 if not raw_data['sim_info']['info']['grasp_on_cloth_recover']:
                     failed_grasps[target_limb_code] += 1
                     targ_data_fscore[0][target_limb_code].append(cma_fscore)
-                if not np.isnan(sim_fscore):
-                    targ_data_fscore[1][target_limb_code].append(sim_fscore)
-                if not np.isnan(cma_fscore) and not math.isnan(cma_fscore):
+            else:
+                if not raw_data['sim_info']['info']['grasp_on_cloth_uncover']:
+                    failed_grasps[target_limb_code] += 1
                     targ_data_fscore[0][target_limb_code].append(cma_fscore)
 
+            if not np.isnan(sim_fscore):
+                targ_data_fscore[1][target_limb_code].append(sim_fscore)
+            if not np.isnan(cma_fscore) and not math.isnan(cma_fscore):
+                targ_data_fscore[0][target_limb_code].append(cma_fscore)
 
-                cleanedList = [x for x in targ_data_fscore[0][target_limb_code] if str(x) != 'nan']
-                targ_data_fscore[0][target_limb_code] = cleanedList
+            cleanedList = [x for x in targ_data_fscore[0][target_limb_code] if str(x) != 'nan']
+            targ_data_fscore[0][target_limb_code] = cleanedList
 
-                cleanedList = [x for x in targ_data_fscore[1][target_limb_code] if str(x) != 'nan']
-                targ_data_fscore[1][target_limb_code] = cleanedList
+            cleanedList = [x for x in targ_data_fscore[1][target_limb_code] if str(x) != 'nan']
+            targ_data_fscore[1][target_limb_code] = cleanedList
     reward_means = [[],[]]
     reward_stds = [[],[]]
     fscore_means = [[],[]]
